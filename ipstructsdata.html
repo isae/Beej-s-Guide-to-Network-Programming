@@ -1,104 +1,61 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<title>IP Addresses, structs, and Data Munging</title>
+<title>IP-адреса, structы, и обработка данных</title>
 <link rel="stylesheet" href="bgnet.css" type="text/css">
 </head>
 
 <body bgcolor="#ffffff">
 <table width="100%" border="0" cellspacing="0"cellpadding="0" class="navtable">
 <tr>
-<td align="left"><a href="theory.html">&lt;&lt;&nbsp;Prev</a></td>
-<td align="center"><a href="index.html">Beej's Guide to Network Programming</a></td><td align="right"><a href="ip4to6.html">Next&nbsp;&gt;&gt;</a></td>
+<td align="left"><a href="theory.html">&lt;&lt;&nbsp;Пред</a></td>
+<td align="center"><a href="index.html">Руководство Beej'a по Программированию Сетей</a></td><td align="right"><a href="ip4to6.html">След&nbsp;&gt;&gt;</a></td>
 </tr></table>
 
 
-<h2 class="sect1title">3. <a name="ipstructsdata">IP Addresses, <nobr><b><tt class="titletype">struct</tt></b></nobr>s, and Data Munging</a></h2><hr class="mainsecthr"/>
+<h2 class="sect1title">3. <a name="ipstructsdata">IP-адреса, <nobr><b><tt class="titletype">struct</tt></b></nobr>ы, и обработка данных</a></h2><hr class="mainsecthr"/>
 
 
-<p>Here's the part of the game where we get to talk code for a
-change.</p>
+<p>В этом разделе мы дошли до той части игры, где мы что-то покодим для разнообразия.</p>
 
-<p>But first, let's discuss more non-code!  Yay!  First I want to talk
-about <a name="indexId434909-57"></a>IP addresses and ports for just a tad so we have
-that sorted out.  Then we'll talk about how the sockets API stores and
-manipulates IP addresses and other data.</p>
+<p>Но для начала, давайте ещё обсудим кое-что без кода! Во-первых, я хочу немного рассказать о <a name="indexId434909-57"></a>IP-адресах и портах, чтобы всё было по порядку. Далее, мы обсудим, как API сокетов хранит и управляет IP-адресами и другими данными.</p>
 
 
 
-<h3 class="sect2title">3.1. <a name="ipaddrs1">IP Addresses, versions 4 and 6</a></h3>
+<h3 class="sect2title">3.1. <a name="ipaddrs1">IP-адреса, версии 4 и 6</a></h3>
 
 
-<p>In the good old days back when Ben Kenobi was still called Obi Wan
-Kenobi, there was a wonderful network routing system called The Internet
-Protocol Version 4, also called <a name="indexId434909-58"></a>IPv4.  It had addresses
-made up of four bytes (A.K.A. four "octets"), and was commonly written
-in "dots and numbers" form, like so: <tt class="tt">192.0.2.111</tt>.</p>
+<p>В старые добрые времена, когда Бена Кеноби всё ещё звали Оби Ваном Кеноби, существовала превосходная система маршрутизации под названием Интернет протокол, версия 4, также известная как <a name="indexId434909-58"></a>IPv4.  В ней были адреса, состоящие из 4 байт(A.K.A. 4х "октетов"), которые обычно записывались в форме "чисел и точек", как, например: <tt class="tt">192.0.2.111</tt>.</p>
 
-<p>You've probably seen it around.</p>
+<p>Возможно, ты уже видел такую запись.</p>
 
-<p>In fact, as of this writing, virtually every site on the Internet
-uses IPv4.</p>
+<p>На деле, на момент написания этой статьи, виртуально каждый сайт в интернете использует адреса IPv4.</p>
 
-<p>Everyone, including Obi Wan, was happy.  Things were great, until
-some naysayer by the name of Vint Cerf warned everyone that we were
-about to run out of IPv4 addresses!</p>
+<p>Все, включая Оби Вана, были счастливы. И всё было хорошо, до тех пор, пока один пророк по имени Vint Cerf не предупредил всех, что скоро IPv4 закончатся!</p>
 
-<p>(Besides warning everyone of the Coming IPv4 Apocalypse Of Doom And
-Gloom, <a name="indexId434909-59"></a><a href="http://en.wikipedia.org/wiki/Vinton_Cerf" target="_blank">Vint Cerf</a> is
-also well-known for being The Father Of The Internet.  So I really am in
-no position to second-guess his judgment.)</p>
+<p>(Помимо предупреждения всех о приближающемся IPv4-апокалипсисе Рока и Мрака, <a name="indexId434909-59"></a><a href="http://en.wikipedia.org/wiki/Vinton_Cerf" target="_blank">Vint Cerf</a> также хорошо известен как Отец Интернета. Поэтому я вряд ли вправе критиковать его суждения.)</p>
 
-<p>Run out of addresses?  How could this be?  I mean, there are like
-billions of IP addresses in a 32-bit IPv4 address.  Do we really have
-billions of computers out there?</p>
+<p>Закончатся адреса? Да как это вообще возможно? В смысле, существуют миллиарды 32-битных IPv4 IP-адресов. У нас что, серьёзно есть миллиарды компьютеров?</p>
 
-<p>Yes.</p>
+<p>Ага.</p>
 
-<p>Also, in the beginning, when there were only a few computers and
-everyone thought a billion was an impossibly large number, some big
-organizations were generously allocated millions of IP addresses for
-their own use.  (Such as Xerox, MIT, Ford, HP, IBM, GE, AT&amp;T, and
-some little company called Apple, to name a few.)</p>
+<p>Кроме того, в самом начале, когда компьютеров было довольно мало и миллиард казался недостижимо великим числом, некоторые большие организации щедро зарезервировали миллионы IP-адресов для своего использования. (Например, Xerox, MIT, Ford, HP, IBM, GE, AT&amp;T, и одна маленькая компания под названием Apple - и это всего несколько примеров.)</p>
 
-<p>In fact, if it weren't for several stopgap measures, we would have
-run out a long time ago.</p>
+<p>На самом деле, если бы некоторые экстренные меры не были бы приняты, они бы закончились давным-давно.</p>
 
-<p>But now we're living in an era where we're talking about every human
-having an IP address, every computer, every calculator, every phone,
-every parking meter, and (why not) every puppy dog, as well.</p>
+<p>Но сейчас мы живём в мире, где почти каждый человек имеет свой IP-адрес, каждый компьютер, каждый калькулятор, каждый телефон, каждый счётчик на автостоянке и каждый (а почему бы и нет?) маленький щеночек может иметь свой IP.</p>
 
-<p>And so, <a name="indexId434909-60"></a>IPv6 was born.  Since Vint Cerf is probably
-immortal (even if his physical form should pass on, heaven forbid, he is
-probably already existing as some kind of hyper-intelligent <a href="http://en.wikipedia.org/wiki/ELIZA" target="_blank">ELIZA</a> program out in the depths of the
-Internet2), no one wants to have to hear him say again "I told you so"
-if we don't have enough addresses in the next version of the Internet
-Protocol.</p>
+<p>И поэтому был создан <a name="indexId434909-60"></a>IPv6. Поскольку, Vint Cerf, возможно,  бессмертен (даже если его физическая оболочка, не дай бог, прекратит существовать, возможно он уже приготовил себе что-то вроде гипер-интеллектуальной программы <a href="http://en.wikipedia.org/wiki/ELIZA" target="_blank">ELIZA</a> в глубинах Интернета2), никто не хочет снова услышать от него "Ну я же говорил" если вдруг у нас закончатся адреса и в следующей версии IP-протокола.</p>
 
-<p>What does this suggest to you?</p>
+<p>К чему же это нас приводит?</p>
 
-<p>That we need a <i>lot</i> more addresses.  That we need not just
-twice as many addresses, not a billion times as many, not a thousand
-trillion times as many, but <i>79 MILLION BILLION TRILLION times as
-many possible addresses!</i>  That'll show 'em!</p>
+<p>А к тому, что нам нужно <i>намного</i> больше адресов. Что нам нужно не просто в два раза больше, не в миллиард раз больше и не в тысячу триллионов раз больше, а в <i>79 МИЛЛИОНОВ МИЛЛИАРДОВ ТРИЛЛИОНОВ больше возможных адресов!</i>  Тогда точно всем хватит!</p>
 
-<p>You're saying, "Beej, is that true?  I have every reason to
-disbelieve large numbers."  Well, the difference between 32 bits and 128
-bits might not sound like a lot; it's only 96 more bits, right?  But
-remember, we're talking powers here: 32 bits represents some 4 billion
-numbers (2<sup><small>32</small></sup>), while 128 bits represents about 340
-trillion trillion trillion numbers (for real, 2<sup><small>128</small></sup>).
-That's like a million IPv4 Internets for <i>every single star in the
-Universe</i>.</p>
+<p>Ты сейчас говоришь, "Beej, это что, правда? У меня есть куча причин, чтобы не верить гигантским числам." Ну, разница между 32 и 128 битами возможно звучит как не слишком большая; всего на 96 бит больше, чего там, правда? Но, поскольку, в этом случае мы говорим о степенях: если 32 бита представляют примерно 4 миллиарда чисел (2<sup><small>32</small></sup>), то 128 бит представляют примерно 340 триллионов триллионов триллионов (2<sup><small>128</small></sup>, всё как есть). Это как миллион IPv4 - интернетов для <i>каждой звезды во Вселенной</i>.</p>
 
-<p>Forget this dots-and-numbers look of IPv4, too; now we've got a
-hexadecimal representation, with each two-byte chunk separated by a
-colon, like this: <tt class="tt">2001:0db8:c9d2:aee5:73e3:934a:a5ae:9551</tt>.</p>
+<p>Также, забудь о точках-и-числах в написании IPv4; теперь у нас будет шестнадцатеричное представление, при этом каждый двухбайтовый кусок будет разделён двоеточием, например так: <tt class="tt">2001:0db8:c9d2:aee5:73e3:934a:a5ae:9551</tt>.</p>
 
-<p>That's not all!  Lots of times, you'll have an IP address with lots
-of zeros in it, and you can compress them between two colons.  And you
-can leave off leading zeros for each byte pair.  For instance, each of
-these pairs of addresses are equivalent:</p>
+<p>И это ещё не всё! Довольно часто, если у тебя есть IP-адрес с кучей нулей в нём, ты можешь сжать его в некоторых местах, выкинув лидирующие нули. Например, каждая из этих пар адресов равнозначна:</p>
 
 <pre class="screen">2001:0db8:c9d2:0012:0000:0000:0000:0051
 2001:db8:c9d2:12::51
@@ -111,113 +68,55 @@ these pairs of addresses are equivalent:</p>
 </pre>
 
 
-<p>The address <tt class="tt">::1</tt> is the <i>loopback address</i>.  It
-always means "this machine I'm running on now".  In IPv4, the loopback
-address is 127.0.0.1.</p>
+<p>Адрес <tt class="tt">::1</tt> называется <i>loopback-адресом</i>. Он всегда означает "машина, на которой я запущен в данный момент". В IPv4, loopback-адресом является 127.0.0.1.</p>
 
-<p>Finally, there's an IPv4-compatibility mode for IPv6 addresses that
-you might come across.  If you want, for example, to represent the IPv4
-address 192.0.2.33 as an IPv6 address, you use the following notation:
+<p>И наконец, существует режим совместимости с IPv4 для IPv6 - адресов. Если ты, к примеру, хочешь представить IPv4-адрес 192.0.2.33 как IPv6, то это будет выглядеть так:
 "<tt class="tt">::ffff:192.0.2.33</tt>".</p>
 
-<p>We're talking serious fun.</p>
+<p>Мы говорим о реально крутой штуке.</p>
 
-<p>In fact, it's such serious fun, that the Creators of IPv6 have quite
-cavalierly lopped off trillions and trillions of addresses for reserved
-use, but we have so many, frankly, who's even counting anymore?  There
-are plenty left over for every man, woman, child, puppy, and parking
-meter on every planet in the galaxy.  And believe me, every planet in
-the galaxy has parking meters.  You know it's true.</p>
+<p>На самом деле, это настолько крутая штука, что Творцы IPv6 просто взяли и зарезервировали триллионы и триллионы адресов, но у нас их так много, что кто вообще будет считать? Ещё с избытком осталось для каждого мужчины, женщины, ребёнка, щеночка и счётчика на автостоянке для каждой планеты в галактике. И поверь мне, на каждой планете в галактике есть автостоянки и счётчики на них. Ты и сам знаешь, что так оно и есть.</p>
 
 
 
-<h4 class="sect3title">3.1.1. <a name="netslash">Subnets</a></h4>
+<h4 class="sect3title">3.1.1. <a name="netslash">Подсети</a></h4>
 
 
-<p>For organizational reasons, it's sometimes convenient to declare that
-"this first part of this IP address up through this bit is the
-<i>network portion</i> of the IP address, and the remainder is the
-<i>host portion</i>.</p>
+<p>По организационным причинам, иногда имеет смысл объявить, что "первая часть IP-адреса, до такого-то бита - это <i>адрес сети</i>, а оставшееся - <i>адрес хоста</i>.</p>
 
-<p>For instance, with IPv4, you might have <tt class="tt">192.0.2.12</tt>, and we could say
-that the first three bytes are the network and the last byte was the
-host.  Or, put another way, we're talking about host <tt class="tt">12</tt> on
-network <tt class="tt">192.0.2.0</tt> (see how we zero out the byte that was the
-host.)</p>
+<p>К примеру, в IPv4, у тебя может быть адрес <tt class="tt">192.0.2.12</tt>, и мы можем сказать, что первые три байта этого адреса - это адрес сети, а оставшийся представляет собой адрес хоста. Или, другими словами, этот адрес представляет собой хост номер <tt class="tt">12</tt> в сети под номером <tt class="tt">192.0.2.0</tt> (обрати внимание, как мы обнулили байт, представляющий хост.)</p>
 
-<p>And now for more outdated information!  Ready?  In the Ancient Times,
-there were "classes" of subnets, where the first one, two, or three
-bytes of the address was the network part.  If you were lucky enough to
-have one byte for the network and three for the host, you could have
-24 bits-worth of hosts on your network (24 million or so).  That was a
-"Class A" network.  On the opposite end was a "Class C", with three
-bytes of network, and one byte of host (256 hosts, minus a couple that
-were reserved.)</p>
+<p>А теперь вернёммся к более устаревшей информации! Готов? В Древние Времена сущестовали "классы" подсетей, в которых первые один, два или три байта были адресом сети. Если ты был достаточно удачлив, чтобы заполучить сеть, в которой первый байт отвечает за номер сети, и три оставшихся - за номер хоста, то у тебя была возможность подключить к своей сети около 24 миллионов компьютеров. Это называлось сетью "класса А". С другой стороны были сети "класса С", с тремя байтами на адрес сети и одним - на адрес хоста(итого только 256 хостов, минус некоторые зарезервированные.)</p>
 
-<p>So as you can see, there were just a few Class As, a huge pile of
-Class Cs, and some Class Bs in the middle.</p>
+<p>Таким образом, у нас было совсем немного сетей класса А, целая куча сетей класса С и прилично сетей класса В посередине.</p>
 
-<p>The network portion of the IP address is described by something
-called the <i>netmask</i>, which you bitwise-AND with the IP address
-to get the network number out of it.  The netmask usually looks
-something like <tt class="tt">255.255.255.0</tt>.  (E.g. with that netmask, if your
-IP is <tt class="tt">192.0.2.12</tt>, then your network is <tt class="tt">192.0.2.12</tt> AND
-<tt class="tt">255.255.255.0</tt> which gives <tt class="tt">192.0.2.0</tt>.)</p>
+<p>Часть адреса, представляющая сеть описывается штукой, которая называется <i>маской подсети</i>, с которой нужно произвести побитовое И с IP-адресом, чтобы вычленить из него номер сети. Обычно маска подсети выглядит примерно так: <tt class="tt">255.255.255.0</tt>.  (Например, с такой маской, если твой IP - <tt class="tt">192.0.2.12</tt>, то твоя сеть - <tt class="tt">192.0.2.12</tt> & <tt class="tt">255.255.255.0</tt>, что даёт нам <tt class="tt">192.0.2.0</tt>.)</p>
 
-<p>Unfortunately, it turned out that this wasn't fine-grained enough for
-the eventual needs of the Internet; we were running out of Class C
-networks quite quickly, and we were most definitely out of Class As, so
-don't even bother to ask.  To remedy this, The Powers That Be allowed
-for the netmask to be an arbitrary number of bits, not just 8, 16, or
-24.  So you might have a netmask of, say <tt class="tt">255.255.255.252</tt>, which
-is 30 bits of network, and 2 bits of host allowing for four hosts on the
-network.  (Note that the netmask is <i>ALWAYS</i> a bunch of 1-bits
-followed by a bunch of 0-bits.)</p>
+<p>К сожалени, быстро выяснилось, что такая классификация недостаточно гибка: сети класса С закончились довольно быстро, не говоря уже о сетях класса А. Чтобы исправить это, Высшие Силы разрешили маске подсети быть любым числом бит, а не только 8, 16 или 24. Таким образом, у тебя может быть маска, скажем <tt class="tt">255.255.255.252</tt>, что означает - 30 бит на адрес сети и два бита на хост, то есть 4 возможных хоста. (Обрати внимание, что маска подсети это <i>ВСЕГДА</i> несколько единиц, за которыми следуют несколько нулей.)</p>
 
-<p>But it's a bit unwieldy to use a big string of numbers like
-<tt class="tt">255.192.0.0</tt> as a netmask.  First of all, people don't have an
-intuitive idea of how many bits that is, and secondly, it's really not
-compact.  So the New Style came along, and it's much nicer.  You just
-put a slash after the IP address, and then follow that by the number of
-network bits in decimal.  Like this: <tt class="tt">192.0.2.12/30</tt>.</p>
+<p>Но, использовать битовую строку, например <tt class="tt">255.192.0.0</tt> в качестве маски подсети довольно неудобно. Во первых, так сразу и не сообразишь, сколько же там единиц и во вторых, такая запись совершенно не компактная. И тогда появился Новый Стиль и он был гораздо более удобен. Теперь нужно было лишь поставить слэш после IP-адреса и написать после него количество единиц в маске подсети. Например, так: <tt class="tt">192.0.2.12/30</tt>.</p>
 
-<p>Or, for IPv6, something like this: <tt class="tt">2001:db8::/32</tt> or
+<p>Или, в IPv6, это бы выглядело как-то так: <tt class="tt">2001:db8::/32</tt> или
 <tt class="tt">2001:db8:5413:4028::9db9/64</tt>.</p>
 
 
 
 
 
-<h4 class="sect3title">3.1.2. <a name="portnums">Port Numbers</a></h4>
+<h4 class="sect3title">3.1.2. <a name="portnums">Порты</a></h4>
 
 
-<p>If you'll kindly remember, I presented you earlier with the <a href="theory.html#lowlevel">Layered Network Model</a> which had the Internet
-Layer (IP) split off from the Host-to-Host Transport Layer (TCP and
-UDP).  Get up to speed on that before the next paragraph.</p>
+<p>Если ты помнишь, я рассказывал тебе ранее о <a href="theory.html#lowlevel">Сетевой Модели ISO(Layered Network Model)</a>, в которой уровень Интернета (IP) был отделён от Транспортного уровня Компьютер-Компьютер(TCP и UDP). Это пригодится нам в следующем абзаце.</p>
 
-<p>Turns out that besides an IP address (used by the IP layer), there
-is another address that is used by TCP (stream sockets) and,
-coincidentally, by UDP (datagram sockets).  It is the <i>port
-number</i>.  It's a 16-bit number that's like the local address for
-the connection.</p>
+<p>Похоже, что помимо IP-адреса (используемого уровнем Интернета(IP layer), существует также другой адрес, используемый TCP (потоковыми сокетами) и, так уж получилось, UDP (датаграм-сокетами). Это <i>номер порта</i>. Это 16-битное число, которое можно интерпретировать примерно как "локальный адрес соединения".</p>
 
-<p>Think of the IP address as the street address of a hotel, and the
-port number as the room number.  That's a decent analogy; maybe later
-I'll come up with one involving the automobile industry.</p>
+<p>IP-адрес можно сравнить с адресом отеля, в то время как номер порта - с номером комнаты в нём. Это вполне подходящая аналогия; возможно, позже я расскажу ещё об одной, связанной с автомобилями.</p>
 
-<p>Say you want to have a computer that handles incoming mail AND web
-services—how do you differentiate between the two on a computer
-with a single IP address?</p>
+<p>Допустим, тебе нужен компьютер, который должен управлять входящей почтой и веб-сервисами - как ты отличишь, к чему относится пришедший пакет, если он пришёл на один IP-адрес?</p>
 
-<p>Well, different services on the Internet have different well-known
-port numbers.  You can see them all in <a href="http://www.iana.org/assignments/port-numbers" target="_blank">the Big
-IANA Port List</a> or, if you're on a Unix box, in your
-<i><tt class="var">/etc/services</tt></i> file.  HTTP (the web) is port 80, telnet is
-port 23, SMTP is port 25, the game <a href="http://en.wikipedia.org/wiki/Doom_(video_game)" target="_blank">DOOM</a>
-used port 666, etc. and so on.  Ports under 1024 are often considered
-special, and usually require special OS privileges to use.</p>
+<p>Так вот, для это разные типы сервисов в интернете имеют разные общепринятые номера портов. Все общепринятые порты можно посмотреть в <a href="http://www.iana.org/assignments/port-numbers" target="_blank">Большом Списке Портов IANA</a> или, если ты используешь Unix, в файле <i><tt class="var">/etc/services</tt></i>.  HTTP (собственно, веб) - порт 80, telnet - 23, SMTP - 25, игра <a href="http://en.wikipedia.org/wiki/Doom_(video_game)" target="_blank">DOOM</a> использует порт 666 и т.д. и т.п. Почти все порты до 1024 - зарезервированы и довольно часто требуют специальных привилегий в системе, чтобы их использовать.</p>
 
-<p>And that's about it!</p>
+<p>Вот и всё о портах!</p>
 
  
 
@@ -225,64 +124,33 @@ special, and usually require special OS privileges to use.</p>
 
 
 
-<h3 class="sect2title">3.2. <a name="byteorder">Byte Order</a></h3>
+<h3 class="sect2title">3.2. <a name="byteorder">Порядок Байтов</a></h3>
 
 
-<p><a name="indexId434909-61"></a>By Order of the Realm!  There shall be two
-byte orderings, hereafter to be known as Lame and Magnificent!</p>
+<p><a name="indexId434909-61"></a>Приказ Короля! Должно быть два порядка байт, называемых далее как Убогий и Великолепный!</p>
 
-<p>I joke, but one really is better than the other.  <tt>:-)</tt></p>
+<p>Я шучу, но один из них действительно лучше другого.  <tt>:-)</tt></p>
 
-<p>There really is no easy way to say this, so I'll just blurt it out:
-your computer might have been storing bytes in reverse order behind your
-back.  I know!  No one wanted to have to tell you.</p>
+<p>Не так-то просто сказать это, поэтому я просто выпалю: твой компьютер может тайно хранить байты в обратном порядке! Это тщательно скрываемая правда!</p>
 
-<p>The thing is, everyone in the Internet world has generally agreed
-that if you want to represent the two-byte hex number, say
-<tt class="tt">b34f</tt>, you'll store it in two sequential bytes <tt class="tt">b3</tt>
-followed by <tt class="tt">4f</tt>.  Makes sense, and, as <a href="http://en.wikipedia.org/wiki/Wilford_Brimley" target="_blank">Wilford Brimley</a> would tell you, it's the Right
-Thing To Do.  This number, stored with the big end first, is called
-<i>Big-Endian</i>.</p>
+<p>Вещь, с которой в основном согласны все люди в Интернете: если тебе нужно представить, скажем, двухбайтовое шестнадцатеричное число, например 
+<tt class="tt">b34f</tt>, ты будешь хранить его в двух последовательных байтах: <tt class="tt">b3</tt>, а за ним <tt class="tt">4f</tt>. Вроде логично, и, по словам <a href="http://en.wikipedia.org/wiki/Wilford_Brimley" target="_blank">Wilford'a Brimley</a>, так оно и должно быть. Такой порядок, в котором большие разряды идут впереди, называется <i>Big-Endian</i>.</p>
 
-<p>Unfortunately, a few computers scattered here and there throughout
-the world, namely anything with an Intel or Intel-compatible processor,
-store the bytes reversed, so <tt class="tt">b34f</tt> would be stored in memory as
-the sequential bytes <tt class="tt">4f</tt> followed by <tt class="tt">b3</tt>.  This storage
-method is called <i>Little-Endian</i>.</p>
+<p>К сожалению, есть несколько разбросанных по всему миру компьютеров, обычно с процессорами от Intel, или Intel-совместимыми, в которых байты хранятся в обратном порядке, поэтому <tt class="tt">b34f</tt> будет храниться в памяти какдва последовательных байта: <tt class="tt">4f</tt>, а за ним <tt class="tt">b3</tt>. Такой метод хранения называется <i>Little-Endian</i>.</p>
 
-<p>But wait, I'm not done with terminology yet!  The more-sane
-<i>Big-Endian</i> is also called <i>Network Byte Order</i>
-because that's the order us network types like.</p>
+<p>Но погоди, я ещё не закончил с терминологией! Обычно <i>Big-Endian</i> ещё называют <i>Сетевым Порядком Байт(Network Byte Order)</i>, потому что именно так передаются байты по сети.</p>
 
-<p>Your computer stores numbers in <i>Host Byte Order</i>.  If it's
-an Intel 80x86, Host Byte Order is Little-Endian.  If it's a Motorola
-68k, Host Byte Order is Big-Endian.  If it's a PowerPC, Host Byte Order
-is...  well, it depends!</p>
+<p>Твой компьютер хранит числа в <i>Порядке Байтов Хоста</i>. Если это Intel 80x86, то порядок - Little-Endian. Если это Motorola 68k, то порядок -  Big-Endian. Если это PowerPC, то порядок байт зависит от модели!</p>
 
-<p>A lot of times when you're building packets or filling out data
-structures you'll need to make sure your two- and four-byte numbers are
-in Network Byte Order.  But how can you do this if you don't know the
-native Host Byte Order?</p>
+<p>Очень часто, когда ты создаёшь пакеты или заполняешь структуры данных, тебе нужно быть уверенным, что твои двух- и четырёх- байтовые числа записаны в Сетевом Порядке байт. Но как можно добиться этого, если ты не знаешь порядок байт на твоей машине?</p>
 
-<p>Good news!  You just get to assume the Host Byte Order isn't right,
-and you always run the value through a function to set it to Network
-Byte Order.  The function will do the magic conversion if it has to, and
-this way your code is portable to machines of differing endianness.</p>
+<p>У меня для тебя хорошие новости! Тебе просто нужно предположить, что порядок данных на твоём компьютере не тот и отдать своё значение специальной функции, которая приведёт его к нужному порядку. Функция сама выполнит магическую конвертацию, если это было необходимо, и тогда твой код будет переносим на машины с другим порядком байт.</p>
 
-<p>All righty.  There are two types of numbers that you can convert:
-<nobr><tt class="type">short</tt></nobr> (two bytes) and <nobr><tt class="type">long</tt></nobr> (four bytes).
-These functions work for the <nobr><tt class="type">unsigned</tt></nobr> variations as well.
-Say you want to convert a <nobr><tt class="type">short</tt></nobr> from Host Byte Order to
-Network Byte Order.  Start with "h" for "host", follow it with "to",
-then "n" for "network", and "s" for "short": h-to-n-s, or
-<b><tt class="func">htons()</tt></b> (read: "Host to Network Short").</p>
+<p>Отлично. Есть два типа чисел, которые ты можешь конвертировать: <nobr><tt class="type">short</tt></nobr> (два байта) и <nobr><tt class="type">long</tt></nobr> (4 байта). Эти функции также работают для беззнаковых(<nobr><tt class="type"></tt></nobr>) вариантов этих типов. Предположим, ты хочешь конвертировать  <nobr><tt class="type">short</tt></nobr> из Локального Порядка Байт в Сетевой. Начнём с "h"  - как "host", далее "to", потом "n"("network"), и "s", т.к. "short": h-to-n-s, или <b><tt class="func">htons()</tt></b> (читается как: "Host to Network Short").</p>
 
-<p>It's almost too easy...</p>
+<p>Это даже слишком просто...</p>
 
-<p>You can use every combination of "n", "h", "s", and "l" you want,
-not counting the really stupid ones.  For example, there is NOT a
-<b><tt class="func">stolh()</tt></b> ("Short to Long Host") function—not at this
-party, anyway.  But there are:</p>
+<p>Ты можешь использовать любую комбинацию из "n", "h", "s", and "l", какую тебе хочется, не считая безумных. К примеру, не существует функции <b><tt class="func">stolh()</tt></b> ("Short to Long Host") — по крайней мере, в этом наборе. Но есть такие функции, как:</p>
 
 <p>
 <center><table cellpadding="10" cellspacing="0" border="0" class="joetable">
@@ -307,44 +175,32 @@ party, anyway.  But there are:</p>
 
 </p>
 
-<p>Basically, you'll want to convert the numbers to Network Byte Order
-before they go out on the wire, and convert them to Host Byte Order as
-they come in off the wire.</p>
+<p>Логично, что тебе нужно сконвертировать числа в Сетевой Порядок Байтов перед тем, как послать их по сети, а потом конвертировать их в Порядок Байтов Хоста, когда они придут к получателю.</p>
 
-<p>I don't know of a 64-bit variant, sorry.  And if you want to do
-floating point, check out the section on <a href="advanced.html#serialization">Serialization</a>, far below.</p>
+<p>К сожалению, я не знаю 64-битного вариаанта. И да, если тебе нужно передать число с плавающей точкой, обратись к секции <a href="advanced.html#serialization">Сериализация</a>, ниже.</p>
 
-<p>Assume the numbers in this document are in Host Byte Order unless I
-say otherwise.</p>
+<p>Можешь считать, что числа в этом документе находятся в Порядке Байтов Хоста, если я не укажу иное.</p>
 
  
 
 
 
-<h3 class="sect2title">3.3. <a name="structs"><nobr><b><tt class="titletype">struct</tt></b></nobr>s</a></h3>
+<h3 class="sect2title">3.3. <a name="structs"><nobr><b><tt class="titletype">struct</tt></b></nobr>ы</a></h3>
 
 
-<p>Well, we're finally here.  It's time to talk about programming.
-In this section, I'll cover various data types used by the sockets
-interface, since some of them are a real bear to figure out.</p>
+<p>Ну, наконец-то добрались. Пришло время поговорить о программировании. В этом разделе я расскажу а различных типах данных, используемых сокетами, посколько некоторые из них не так-то просто понять.</p>
 
-<p>First the easy one: a <a name="indexId434909-66"></a>socket descriptor.
-A socket descriptor is the following type:</p>
+<p>Первый тип данных простой: <a name="indexId434909-66"></a>дескриптор сокета. Дескриптор сокета имеет следующий тип:</p>
 
 <pre class="code">int</pre>
 
 
-<p>Just a regular <nobr><tt class="type">int</tt></nobr>.</p>
+<p>Самый обыкновенный <nobr><tt class="type">int</tt></nobr>.</p>
 
-<p>Things get weird from here, so just read through and bear with
-me.</p>
+<p>Дальше будут рассказываться довольно странные вещи, так что потерпите и постарайтесь дочитать.</p>
 
-<p>My First Struct<sup><small>TM</small></sup>—<a name="indexId434909-67"></a><nobr><tt class="type">struct
-addrinfo</tt></nobr>.  This structure is a more recent invention, and is used
-to prep the socket address structures for subsequent use.  It's also
-used in host name lookups, and service name lookups.  That'll make more
-sense later when we get to actual usage, but just know for now that it's
-one of the first things you'll call when making a connection.</p>
+<p>Моя Первая Структура<sup><small>TM</small></sup>—<a name="indexId434909-67"></a><nobr><tt class="type">struct
+addrinfo</tt></nobr>.  Эта структура появилась позднее, она используется для того, чтобы сохранить адрес сокета для последующих использований. Также она используется при поиске имени хоста и поиске имени сервиса (host/service name lookup). Станет гораздо более понятно, когда мы дойдём до реального использования в коде, а пока - просто знай что это одна из первых вещей, которые пригодятся тебе при создании соединения.</p>
 
 <pre class="code">struct addrinfo {
     int              ai_flags;     // AI_PASSIVE, AI_CANONNAME, etc.
@@ -359,40 +215,22 @@ one of the first things you'll call when making a connection.</p>
 };</pre>
 
 
-<p>You'll load this struct up a bit, and then call <a name="indexId434909-68"></a><b><tt class="func">getaddrinfo()</tt></b>.  It'll return a pointer
-to a new linked list of these structures filled out with all the goodies
-you need.</p>
+<p>Ты заполняешь эту структуру, а после вызываешь <a name="indexId434909-68"></a><b><tt class="func">getaddrinfo()</tt></b>. Она возвращает указатель на новый линкованный список этих структур, заполненный всем, чем тебе нужно.</p>
 
-<p>You can force it to use IPv4 or IPv6 in the <i><tt class="var">ai_family</tt></i>
-field, or leave it as <tt class="const">AF_UNSPEC</tt> to use whatever.  This is
-cool because your code can be IP version-agnostic.</p>
+<p>Ты можешь потребовать использовать IPv4 или IPv6, изменяя поле <i><tt class="var">ai_family</tt></i> или оставить его как <tt class="const">AF_UNSPEC</tt>, чтобы версия протокола была выбрана по умолчанию. Это круто, потому что тогда твой код может быть написан без привязки к версии IP.</p>
 
-<p>Note that this is a linked list: <i><tt class="var">ai_next</tt></i> points at the
-next element—there could be several results for you to choose
-from.  I'd use the first result that worked, but you might have
-different business needs; I don't know everything, man!</p>
+<p>Обрати внимание на связный список в конце структуры: <i><tt class="var">ai_next</tt></i> указывает на следующий элемент - могут быть возвращены несколько результатов, и ты можешь выбирать из них. Я обычнор использую первый результат, который будет работать, но возможно в твоей бизнес-логике будет сделано по-другому; Я не могу знать всего, парень!</p>
 
-<p>You'll see that the <i><tt class="var">ai_addr</tt></i> field in the <nobr><tt class="type">struct
-addrinfo</tt></nobr> is a pointer to a <a name="indexId434909-69"></a><nobr><tt class="type">struct sockaddr</tt></nobr>.  This is where we start getting
-into the nitty-gritty details of what's inside an IP address
-structure.</p>
+<p>Обрати внимание, что поле <i><tt class="var">ai_addr</tt></i> в структуре <nobr><tt class="type">struct
+addrinfo</tt></nobr> - это указатель на структуру <a name="indexId434909-69"></a><nobr><tt class="type">struct sockaddr</tt></nobr>. Это место, с которого мы начнём вникать в мельчайшие детали того, что содержится в структуре IP-адреса.</p>
 
-<p>You might not usually need to write to these structures; oftentimes,
-a call to <b><tt class="func">getaddrinfo()</tt></b> to fill out your <nobr><tt class="type">struct
-addrinfo</tt></nobr> for you is all you'll need.  You <i>will</i>,
-however, have to peer inside these <nobr><tt class="type">struct</tt></nobr>s to get the
-values out, so I'm presenting them here.</p>
+<p>Как правило, тебе не нужно самому заполнять эти структуры; довольно часто, вызов <b><tt class="func">getaddrinfo()</tt></b>, заполняющий твою <nobr><tt class="type">struct addrinfo</tt></nobr> - это то, что тебе нужно. Тем не менее, тебе <i>будет нужно</i> вникнуть в детали этих <nobr><tt class="type">struct</tt></nobr>ов, чтобы уметь доставать оттуда необходимые данные, поэтому я и рассказываю о них.</p>
 
-<p>(Also, all the code written before <nobr><tt class="type">struct addrinfo</tt></nobr> was
-invented packed all this stuff by hand, so you'll see a lot of IPv4 code
-out in the wild that does exactly that.  You know, in old versions of
-this guide and so on.)</p>
+<p>(Также, весь код, написанный до появления <nobr><tt class="type">struct addrinfo</tt></nobr> запаковывал все эти данные вручную, поэтому иногда в жизни можно увидеть кучу кода, связанного с IPv4, который делает ровно то же самое. Например, в прошлый версиях этого руководства и т.п.)</p>
 
-<p>Some <nobr><tt class="type">struct</tt></nobr>s are IPv4, some are IPv6, and some are both.
-I'll make notes of which are what.</p>
+<p>Некоторые <nobr><tt class="type">struct</tt></nobr>ы работают с IPv4, некоторые - с IPv6, а некоторые - с обоими версиями. Я укажу, что есть что.</p>
 
-<p>Anyway, the <nobr><tt class="type">struct sockaddr</tt></nobr> holds socket address
-information for many types of sockets.</p>
+<p>Так или иначе, <nobr><tt class="type">struct sockaddr</tt></nobr> содержит адрес сокета, который может быть заполнен для нескольких типов сокетов.</p>
 
 <pre class="code">struct sockaddr {
     unsigned short    sa_family;    // address family, AF_xxx
@@ -401,15 +239,10 @@ information for many types of sockets.</p>
 </pre>
 
 
-<p><i><tt class="var">sa_family</tt></i> can be a variety of things, but it'll be <a name="indexId434909-70"></a><tt class="const">AF_INET</tt> (IPv4) or <a name="indexId434909-71"></a><tt class="const">AF_INET6</tt> (IPv6) for everything we do in
-this document.  <i><tt class="var">sa_data</tt></i> contains a destination address
-and port number for the socket.  This is rather unwieldy since you don't
-want to tediously pack the address in the <i><tt class="var">sa_data</tt></i> by
-hand.</p>
+<p><i><tt class="var">sa_family</tt></i> может быть тучей различных вещей, но в этом документе она будет либо <a name="indexId434909-70"></a><tt class="const">AF_INET</tt> (IPv4), либо <a name="indexId434909-71"></a><tt class="const">AF_INET6</tt> (IPv6).  <i><tt class="var">sa_data</tt></i> содержит адрес получателя и номер порта для сокета. Это довольно громоздко, поскольку ты не хочешь нудно запаковывать адрес в <i><tt class="var">sa_data</tt></i> вручную.</p>
 
-<p>To deal with <nobr><tt class="type">struct sockaddr</tt></nobr>, programmers created a
-parallel structure: <a name="indexId434909-72"></a><nobr><tt class="type">struct
-sockaddr_in</tt></nobr> ("in" for "Internet") to be used with IPv4.</p>
+<p>Для того, чтобы работать с <nobr><tt class="type">struct sockaddr</tt></nobr>, программисты создали параллельную структуру: <a name="indexId434909-72"></a><nobr><tt class="type">struct
+sockaddr_in</tt></nobr> ("in" значит "Internet") для использования с IPv4.</p>
 
 <p>And <i>this is the important</i> bit: a pointer to a <nobr><tt class="type">struct
 sockaddr_in</tt></nobr> can be cast to a pointer to a <nobr><tt class="type">struct
